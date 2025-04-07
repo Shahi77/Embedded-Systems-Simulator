@@ -2,8 +2,6 @@
 
 A lightweight Python-based simulator for testing embedded algorithms in a virtual environment. Validate sensor-driven logic, GPIO interactions, and UART communication without physical hardware.
 
----
-
 ## Features
 
 - **Virtual Hardware Emulation**
@@ -27,4 +25,12 @@ A lightweight Python-based simulator for testing embedded algorithms in a virtua
   - Single-file Python implementation
   - Cross-platform (Windows/Linux/macOS)
 
----
+## Output
+![image](https://github.com/user-attachments/assets/390b677f-02e3-4e33-9b15-0a396b84bcd7)
+
+![image](https://github.com/user-attachments/assets/294b8668-179d-4bc4-9167-0466ef63ebfa)
+
+![image](https://github.com/user-attachments/assets/0113e13b-5b47-449c-b862-5bdce17f29b7)
+
+
+

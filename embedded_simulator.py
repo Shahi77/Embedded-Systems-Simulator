@@ -1,125 +1,92 @@
-"""
-embedded_simulator.py
-A single-file embedded systems simulator with GPIO, ADC, UART, and virtual time
-"""
-
-import argparse
 import time
-from typing import Dict, List
 
-# ----------------- Hardware Abstraction Layer -----------------
+# Virtual GPIO class
 class VirtualGPIO:
     def __init__(self):
-        self.pins: Dict[int, int] = {}
-    
-    def write(self, pin: int, value: int):
+        self.pins = {}
+
+    def write(self, pin, value):
         self.pins[pin] = value
         print(f"GPIO {pin} set to {value}")
 
-    def read(self, pin: int) -> int:
+    def read(self, pin):
         return self.pins.get(pin, 0)
 
+# Virtual UART class
+class VirtualUART:
+    def send(self, message):
+        print(f"[UART TX]: {message}")
+
+# Virtual ADC class (e.g., temperature sensor)
 class VirtualADC:
     def __init__(self):
-        self.sensors: Dict[int, float] = {0: 25.0}  # Default sensor data
-    
-    def read(self, channel: int) -> float:
+        self.sensors = {0: 25.0}  # Start at 25°C
+
+    def read(self, channel):
         return self.sensors.get(channel, 0.0)
 
-class VirtualUART:
+# Virtual time manager
+class VirtualTime:
     def __init__(self):
-        self.buffer: List[str] = []
-    
-    def send(self, data: str):
-        self.buffer.append(f"[UART TX]: {data}")
-        print(self.buffer[-1])
-    
-    def receive(self) -> str:
-        return "SIM_ACK" if self.buffer else ""
+        self.start_time = time.time()
 
-# ----------------- Simulation Engine -----------------
-class EmbeddedSimulator:
-    def __init__(self, timeout=10.0, time_scale=1.0):
-        self.hal = {
-            'gpio': VirtualGPIO(),
-            'adc': VirtualADC(),
-            'uart': VirtualUART()
-        }
-        self.timeout = timeout
-        self.time_scale = time_scale
-        self.virtual_time = 0.0
-        self.running = False
+    def elapsed(self):
+        return time.time() - self.start_time
 
-    def run(self, user_setup, user_loop):
-        self.running = True
-        start_time = time.monotonic()
-        
-        # Hardware initialization
-        user_setup()
-        
-        while self.running and self.virtual_time < self.timeout:
-            # Execute user code
-            user_loop()
-            
-            # Update virtual time
-            elapsed = (time.monotonic() - start_time) * self.time_scale
-            self.virtual_time = elapsed
-            
-            # Simulation heartbeat
-            print(f"\nVirtual Time: {self.virtual_time:.2f}s")
-            time.sleep(0.1 * self.time_scale)  # Throttle execution
-            
-            if self.virtual_time >= self.timeout:
-                self.stop()
-    
-    def stop(self):
-        self.running = False
-        print("\nSimulation stopped")
+# Initialize virtual components
+gpio = VirtualGPIO()
+uart = VirtualUART()
+adc = VirtualADC()
+vtime = VirtualTime()
 
-# ----------------- Example User Firmware -----------------
-def user_setup():
-    """User-defined initialization"""
-    global gpio, adc, uart  # Access HAL components
-    gpio.write(13, 0)      # Initialize LED pin
+# State tracking
+last_cooling_state = None
+
+# User-defined main loop
+def user_loop():
+    global last_cooling_state
+
+    temp = adc.read(0)
+    print(f"Temperature: {temp:.1f}°C")
+
+    if temp >= 30.5:
+        gpio.write(13, 1)
+        if last_cooling_state != 1:
+            uart.send("COOLING ON")
+            last_cooling_state = 1
+        adc.sensors[0] -= 0.6  # Cooling effect
+    elif temp <= 28.0:
+        gpio.write(13, 0)
+        if last_cooling_state != 0:
+            uart.send("COOLING OFF")
+            last_cooling_state = 0
+    else:
+        if gpio.read(13) == 1:
+            adc.sensors[0] -= 0.6  # Cooling continues
+
+    # Simulate heating when cooling is OFF
+    if gpio.read(13) == 0:
+        adc.sensors[0] += 0.5  # Environment heats up
+
+# Main simulation loop
+def run_simulation(timeout=10.0, interval=0.1):
+    print("=== Starting Embedded System Simulation ===")
+    gpio.write(13, 0)
     uart.send("SYSTEM BOOT")
 
-def user_loop():
-    """User-defined main loop"""
-    global gpio, adc, uart
-    
-    # Read simulated temperature
-    temp = adc.read(0)
-    print(f"Temperature: {temp}°C")
-    
-    # Control logic
-    if temp > 30.0:
-        gpio.write(13, 1)
-        uart.send("COOLING ON")
-    else:
-        gpio.write(13, 0)
-    
-    # Simulate sensor temperature increase
-    adc.sensors[0] += 0.5
+    while True:
+        elapsed = vtime.elapsed()
+        if elapsed > timeout:
+            break
+        print(f"\nVirtual Time: {elapsed:.2f}s")
+        user_loop()
+        time.sleep(interval)
 
-# ----------------- Main Execution -----------------
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Embedded System Simulator")
-    parser.add_argument("--timeout", type=float, default=10.0,
-                      help="Simulation duration in virtual seconds")
-    parser.add_argument("--speed", type=float, default=1.0,
-                      help="Time acceleration factor (e.g., 2.0 for 2x speed)")
-    args = parser.parse_args()
-
-    # Initialize simulator and HAL
-    sim = EmbeddedSimulator(timeout=args.timeout, time_scale=args.speed)
-    gpio = sim.hal['gpio']
-    adc = sim.hal['adc']
-    uart = sim.hal['uart']
-
-    print("=== Starting Embedded System Simulation ===")
-    try:
-        sim.run(user_setup, user_loop)
-    except KeyboardInterrupt:
-        sim.stop()
+    print("\nSimulation stopped")
     print("=== Simulation Complete ===")
-    print("Final GPIO States:", gpio.pins)
+    print(f"Final GPIO States: {gpio.pins}")
+    print(f"Final Temperature: {adc.sensors[0]:.2f}°C")
+
+# Run the simulation
+if __name__ == "__main__":
+    run_simulation()

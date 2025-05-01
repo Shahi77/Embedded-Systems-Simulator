@@ -38,6 +38,8 @@ cd embedded-simulator
 ```bash
 python embedded-simulator.py
 ```
+## Temperature Monitoring and GPIO Cooling Response
+![image](https://github.com/user-attachments/assets/b2390aa1-b947-450e-b2fa-1958dbad9a94)
 
 ## Output
 ![image](https://github.com/user-attachments/assets/2d99c2cd-be9b-4005-b5e8-7aa0106c0293)
